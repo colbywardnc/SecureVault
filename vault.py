@@ -181,3 +181,35 @@ class Vault:
 
         # Return the credential with the decrypted password.
         return (entry[0], entry[1], entry[2], password)
+
+    def delete_entry(self, entry_id):
+        # Make sure the vault is unlocked before deleting a credential
+        if self.key is None:
+            return False
+
+        # Delete the credential with the requested ID.
+        cursor = self.connection.execute(
+            "DELETE FROM entries WHERE id = ?",
+            (entry_id,)
+        )
+
+        # Save the change to the database.
+        self.connection.commit()
+
+        # Return True if a credential was actually deleted.
+        return cursor.rowcount > 0
+
+vault = Vault()
+
+vault.unlock("TestMasterPassword123!")
+
+entry = vault.find_entry("TestDelete")
+print("Entry before deletion:", entry)
+
+vault.lock()
+print("Delete while locked:", vault.delete_entry(entry[0]))
+
+vault.unlock("TestMasterPassword123!")
+print("Delete while unlocked:", vault.delete_entry(entry[0]))
+
+print("Find deleted entry:", vault.find_entry("TestDelete"))
