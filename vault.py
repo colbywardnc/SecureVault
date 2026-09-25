@@ -91,6 +91,13 @@ class Vault:
         # Return True to show that the vault was unlocked successfully.
         return True
 
+    def verify_master_password(self, master_password):
+        # Create a key from the entered master password.
+        key = self.create_key(master_password)
+
+        # Check whether the password matches the vault's verification code.
+        return self.verify_password(key)
+
     def lock(self):
         # Remove the encryption key from memory.
         self.key = None
@@ -180,6 +187,24 @@ class Vault:
         password = decrypt_data(entry[3], self.key)
 
         # Return the credential with the decrypted password.
+        return (entry[0], entry[1], entry[2], password)
+
+    def find_entry_by_id(self, entry_id):
+        if self.key is None:
+            return None
+
+        cursor = self.connection.execute(
+            "SELECT id, service, username, encrypted_password "
+            "FROM entries WHERE id = ?",
+            (entry_id,)
+        )
+
+        entry = cursor.fetchone()
+
+        if entry is None:
+            return None
+
+        password = decrypt_data(entry[3], self.key)
         return (entry[0], entry[1], entry[2], password)
 
     def delete_entry(self, entry_id):
