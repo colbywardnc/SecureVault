@@ -183,7 +183,7 @@ class Vault:
         return (entry[0], entry[1], entry[2], password)
 
     def delete_entry(self, entry_id):
-        # Make sure the vault is unlocked before deleting a credential
+        # Make sure the vault is unlocked before deleting a credential.
         if self.key is None:
             return False
 
@@ -199,17 +199,16 @@ class Vault:
         # Return True if a credential was actually deleted.
         return cursor.rowcount > 0
 
-vault = Vault()
+    def list_entries(self):
+        # Make sure the vault is unlocked before listing credentials.
+        if self.key is None:
+            return []
 
-vault.unlock("TestMasterPassword123!")
+        # Retrieve the ID, service, and username for each credential.
+        cursor = self.connection.execute(
+            "SELECT id, service, username FROM entries"
+        )
 
-entry = vault.find_entry("TestDelete")
-print("Entry before deletion:", entry)
+        # Return the saved credentials without exposing their passwords.
+        return cursor.fetchall()
 
-vault.lock()
-print("Delete while locked:", vault.delete_entry(entry[0]))
-
-vault.unlock("TestMasterPassword123!")
-print("Delete while unlocked:", vault.delete_entry(entry[0]))
-
-print("Find deleted entry:", vault.find_entry("TestDelete"))
