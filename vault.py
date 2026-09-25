@@ -12,7 +12,7 @@ class Vault:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 service TEXT NOT NULL,
                 username TEXT NOT NULL,
-                password TEXT NOT NULL
+                encrypted_password BLOB NOT NULL
             )
         """)
 
@@ -112,10 +112,13 @@ class Vault:
 
 
     def add_entry(self, service, username, password):
+        # Encrypt the password before storing it in the database.
+        encrypted_password = encrypt_data(password, self.key)
+
         # Adds the credential to the database.
         self.connection.execute(
-            "INSERT INTO entries (service, username, password) VALUES (?, ?, ?)",
-            (service, username, password)
+            "INSERT INTO entries (service, username, encrypted_password) VALUES (?, ?, ?)",
+            (service, username, encrypted_password)
         )
 
         # Save the change to the database.
@@ -124,11 +127,18 @@ class Vault:
     def find_entry(self, service):
         # Search through the database for the requested service.
         cursor = self.connection.execute(
-            "SELECT id, service, username, password FROM entries WHERE service = ?",
+            "SELECT id, service, username, encrypted_password FROM entries WHERE service = ?",
             (service,)
         )
 
         # Get the first matching entry.
         entry = cursor.fetchone()
 
-        return entry
+        if entry is None:
+            return None
+
+        # Decrypt the stored password using the vault's encryption key.
+        password = decrypt_data(entry[3], self.key)
+
+        # Return the credential with the decrypted password.
+        return (entry[0], entry[1], entry[2], password)
