@@ -12,6 +12,9 @@ window.geometry("400x300")
 # Create the frame that will hold the credential list.
 entries_frame = tk.Frame(window)
 
+# Store the vault interface widgets so they can be hidden when locked.
+vault_widgets = []
+
 # Create a label for the master password.
 password_label = tk.Label(window, text="Master Password:")
 password_label.pack(pady=10)
@@ -257,8 +260,27 @@ def refresh_entries():
         )
         entry_button.pack(pady=2)
 
+# Lock the vault and return to the login screen.
+def lock_vault():
+    vault.lock()
+
+    # Remove the vault interface.
+    entries_frame.pack_forget()
+
+    for widget in vault_widgets:
+        widget.pack_forget()
+
+    # Show the login screen again.
+    password_label.pack(pady=10)
+    password_entry.pack(pady=5)
+    unlock_button.pack(pady=10)
+    result_label.pack(pady=5)
+
 # Show the vault interface after a successful unlock.
 def show_vault():
+    # Clear the previous vault widget references.
+    vault_widgets.clear()
+
     password_label.pack_forget()
     password_entry.pack_forget()
     unlock_button.pack_forget()
@@ -266,6 +288,8 @@ def show_vault():
 
     vault_label = tk.Label(window, text="SecureVault")
     vault_label.pack(pady=20)
+
+    vault_widgets.append(vault_label)
 
     # Show the credential list frame.
     entries_frame.pack(pady=5)
@@ -280,6 +304,19 @@ def show_vault():
         command=show_add_credential
     )
     add_button.pack(pady=10)
+
+    vault_widgets.append(add_button)
+
+    # Create a button for locking the vault.
+    lock_button = tk.Button(
+        window,
+        text="Lock Vault",
+        command=lock_vault
+    )
+    lock_button.pack(pady=10)
+
+    vault_widgets.append(lock_button)
+
 
 # Create the unlock button.
 unlock_button = tk.Button(window, text="Unlock", command=unlock_vault)
