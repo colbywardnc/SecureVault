@@ -3,6 +3,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 import base64
 import os
+import secrets
 
 def generate_key():
     # Generate a secure random encryption key.
@@ -40,3 +41,14 @@ def decrypt_data(data, key):
     fernet = Fernet(key)
     return fernet.decrypt(data).decode()
 
+def generate_password(length=16):
+    # Characters that can be used in the generated password.
+    characters = (
+        "abcdefghijklmnopqrstuvwxyz"
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        "0123456789"
+        "!@#$%^&*()_+"
+    )
+
+    # Generate a random password using a cryptographically secure generator.
+    return "".join(secrets.choice(characters) for _ in range(length))

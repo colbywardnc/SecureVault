@@ -1,5 +1,6 @@
 import tkinter as tk
 from vault import Vault
+from crypto import generate_password
 
 # Create the vault object.
 vault = Vault()
@@ -62,6 +63,20 @@ def show_add_credential():
 
     password_entry = tk.Entry(add_window, show="*")
     password_entry.pack(pady=5)
+
+    # Generate a secure password and place it in the password field.
+    def generate_new_password():
+        password = generate_password()
+        password_entry.delete(0, tk.END)
+        password_entry.insert(0, password)
+
+    # Create a button for generating a password.
+    generate_button = tk.Button(
+        add_window,
+        text="Generate Password",
+        command=generate_new_password
+    )
+    generate_button.pack(pady=5)
 
     # Save the new credential to the vault.
     def save_credential():
