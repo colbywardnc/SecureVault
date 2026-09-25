@@ -3,6 +3,9 @@ from crypto import generate_salt, derive_key, encrypt_data, decrypt_data
 
 class Vault:
     def __init__(self):
+        # The vault starts locked until the user unlocks it
+        self.key = None
+
         # Store the saved credentials in the vault.
         self.connection = sqlite3.connect('securevault.db')
 
@@ -57,6 +60,23 @@ class Vault:
         # Create an encryption key from the master password and salt.
         return derive_key(master_password, salt)
 
+    def setup(self, master_password):
+        # Do not allow setup if the vault already has a master password.
+        if self.has_verification():
+            return False
+
+        # Create the encryption key from the new master password.
+        key = self.create_key(master_password)
+
+        # Store the key while the vault is unlocked.
+        self.key = key
+
+        # Create the verification value for the new vault.
+        self.create_verification()
+
+        # Return True to show that the vault was set up successfully.
+        return True
+
     def unlock(self, master_password):
         # Create the encryption key from the master password.
         key = self.create_key(master_password)
@@ -70,6 +90,10 @@ class Vault:
 
         # Return True to show that the vault was unlocked successfully.
         return True
+
+    def lock(self):
+        # Remove the encryption key from memory.
+        self.key = None
 
     def create_verification(self):
         # Encrypt a fixed value using the vault's encryption key.
@@ -116,6 +140,10 @@ class Vault:
 
 
     def add_entry(self, service, username, password):
+        # Make sure the vault is unlocked before adding a credential.
+        if self.key is None:
+            return False
+
         # Encrypt the password before storing it in the database.
         encrypted_password = encrypt_data(password, self.key)
 
@@ -128,7 +156,14 @@ class Vault:
         # Save the change to the database.
         self.connection.commit()
 
+        # Return True to show that the credential was added successfully.
+        return True
+
     def find_entry(self, service):
+        # Make sure the vault is unlocked before retrieving a credential.
+        if self.key is None:
+            return None
+
         # Search through the database for the requested service.
         cursor = self.connection.execute(
             "SELECT id, service, username, encrypted_password FROM entries WHERE service = ?",
