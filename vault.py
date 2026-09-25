@@ -1,4 +1,5 @@
 import sqlite3
+from crypto import generate_salt, derive_key, encrypt_data, decrypt_data
 
 class Vault:
     def __init__(self):
@@ -15,7 +16,100 @@ class Vault:
             )
         """)
 
+        self.connection.execute("""
+            CREATE TABLE IF NOT EXISTS vault_metadata (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                salt BLOB NOT NULL,
+                verification BLOB
+            )
+        """)
+
+        # Check whether the vault already has a salt.
+        cursor = self.connection.execute(
+            "SELECT salt FROM vault_metadata WHERE id = 1"
+        )
+
+        if cursor.fetchone() is None:
+            # Generate and save a new salt for the vault.
+            salt = generate_salt()
+
+            self.connection.execute(
+                "INSERT INTO vault_metadata (id, salt) VALUES (1, ?)",
+                (salt,)
+            )
+
         self.connection.commit()
+
+    def get_salt(self):
+        # Retrieve the vault's stored salt from the database.
+        cursor = self.connection.execute(
+            "SELECT salt FROM vault_metadata WHERE id = 1"
+        )
+
+        # Return the stored salt.
+        salt = cursor.fetchone()[0]
+        return salt
+
+    def create_key(self, master_password):
+        # Get the salt stored for this vault.
+        salt = self.get_salt()
+
+        # Create an encryption key from the master password and salt.
+        return derive_key(master_password, salt)
+
+    def unlock(self, master_password):
+        # Create the encryption key from the master password.
+        key = self.create_key(master_password)
+
+        # Store the key while the vault is unlocked.
+        self.key = key
+
+        # Return the key so it can be used by the application.
+        return key
+
+    def create_verification(self):
+        # Encrypt a fixed value using the vault's encryption key.
+        verification = encrypt_data("SecureVault", self.key)
+
+        # Store the encrypted verification value in the database.
+        self.connection.execute(
+            "UPDATE vault_metadata SET verification = ? WHERE id = 1",
+            (verification,)
+        )
+
+        # Save the verification value.
+        self.connection.commit()
+
+    def has_verification(self):
+        # Check whether a verification value has been stored.
+        cursor = self.connection.execute(
+            "SELECT verification FROM vault_metadata WHERE id = 1"
+        )
+
+        # Return True if a verification value exists.
+        return cursor.fetchone()[0] is not None
+
+    def verify_password(self, key):
+        # Get the encrypted verification value from the database.
+        cursor = self.connection.execute(
+            "SELECT verification FROM vault_metadata WHERE id = 1"
+        )
+
+        # Get the stored verification value.
+        verification = cursor.fetchone()[0]
+
+        try:
+            # Try to decrypt the verification using the provided key.
+            decrypted = decrypt_data(verification, key)
+
+            # The password is correct if the decrypted value matches.
+            return decrypted == "SecureVault"
+
+        except Exception:
+            # A wrong key will cause decryption to fail.
+            return False
+
+
 
     def add_entry(self, service, username, password):
         # Adds the credential to the database.
@@ -38,4 +132,3 @@ class Vault:
         entry = cursor.fetchone()
 
         return entry
-
