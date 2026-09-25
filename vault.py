@@ -61,11 +61,15 @@ class Vault:
         # Create the encryption key from the master password.
         key = self.create_key(master_password)
 
+        # Check whether the password matches the vault's verification value.
+        if not self.verify_password(key):
+            return False
+
         # Store the key while the vault is unlocked.
         self.key = key
 
-        # Return the key so it can be used by the application.
-        return key
+        # Return True to show that the vault was unlocked successfully.
+        return True
 
     def create_verification(self):
         # Encrypt a fixed value using the vault's encryption key.
