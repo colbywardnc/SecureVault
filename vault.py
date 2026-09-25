@@ -212,3 +212,24 @@ class Vault:
         # Return the saved credentials without exposing their passwords.
         return cursor.fetchall()
 
+    def update_entry(self, entry_id, service, username, password):
+        # Make sure the vault is unlocked before updating a credential.
+        if self.key is None:
+            return False
+
+        # Encrypt the new password before storing it.
+        encrypted_password = encrypt_data(password, self.key)
+
+        # Update the credential with the new information.
+        cursor = self.connection.execute(
+            "UPDATE entries SET service = ?, username = ?, encrypted_password = ? "
+            "WHERE id = ?",
+            (service, username, encrypted_password, entry_id)
+        )
+
+        # Save the change to the database.
+        self.connection.commit()
+
+        # Return True if a credential was actually updated.
+        return cursor.rowcount > 0
+
